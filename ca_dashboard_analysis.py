@@ -517,27 +517,21 @@ def load_sample_block_f() -> pd.DataFrame:
 # ============================================================
 def load_all_blocks():
     """
-    gspread OAuth 2.0으로 비공개 구글 시트에서 데이터를 로드하고,
-    실패 시 샘플 데이터로 폴백.
+    구글 시트에서 데이터를 로드하고, 실패 시 샘플 데이터로 폴백.
 
     인증 흐름:
-    1) gspread 설치 확인
-    2) credentials.json 존재 확인
-    3) OAuth 인증 → 시트 접속 → 블록별 데이터 추출
+    1) Streamlit Cloud → 서비스 계정 (st.secrets)
+    2) 로컬 → OAuth (credentials.json)
+    3) 둘 다 실패 → 샘플 데이터
     """
-    print("\n[1단계] 데이터 로드 (gspread OAuth 2.0)")
+    print("\n[1단계] 데이터 로드")
     print("-" * 40)
 
     if not GSPREAD_AVAILABLE:
         print("  [!] gspread 라이브러리가 없습니다. pip install gspread 후 재실행하세요.")
         return _fallback_sample_data()
 
-    if not CREDENTIALS_FILE.exists():
-        print(f"  [!] credentials.json을 찾을 수 없습니다.")
-        print(f"      CA_AX 폴더에 credentials.json이 있는지 확인해주세요.")
-        return _fallback_sample_data()
-
-    # --- gspread OAuth 인증 → 시트 로드 ---
+    # --- 인증 (서비스 계정 우선, 없으면 OAuth) → 시트 로드 ---
     raw = load_sheet_via_oauth()
 
     if raw is not None:
