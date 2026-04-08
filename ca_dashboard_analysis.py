@@ -112,18 +112,36 @@ def normalize_manager(name) -> str:
 
 
 # ============================================================
-# 1. gspread OAuth 2.0 인증 + 구글 시트 로드
+# 1. 인증 — Streamlit Cloud(서비스 계정) 또는 로컬(OAuth)
 # ============================================================
 def authenticate_gspread():
     """
-    gspread.oauth()를 사용하여 OAuth 2.0 인증 수행.
-
-    동작 방식:
-    1) authorized_user.json이 있으면 → 토큰 재사용 (브라우저 팝업 없음)
-    2) 없으면 → credentials.json 기반으로 브라우저 팝업 → 구글 로그인 → 토큰 자동 저장
+    인증 우선순위:
+    1) Streamlit Cloud → st.secrets의 서비스 계정 키 사용
+    2) 로컬 → credentials.json 기반 OAuth 2.0
 
     Returns: gspread.Client 객체
     """
+    # ── 방법 1: Streamlit Cloud 서비스 계정 ──
+    try:
+        import streamlit as st
+        if "gcp_service_account" in st.secrets:
+            from google.oauth2.service_account import Credentials
+            scopes = [
+                "https://www.googleapis.com/auth/spreadsheets.readonly",
+                "https://www.googleapis.com/auth/drive.readonly",
+            ]
+            creds = Credentials.from_service_account_info(
+                dict(st.secrets["gcp_service_account"]),
+                scopes=scopes,
+            )
+            gc = gspread.authorize(creds)
+            print(f"  [OK] 서비스 계정 인증 성공 (Streamlit Cloud)")
+            return gc
+    except Exception as e:
+        print(f"  [!] 서비스 계정 인증 시도 실패: {e}")
+
+    # ── 방법 2: 로컬 OAuth ──
     print(f"  credentials.json 경로: {CREDENTIALS_FILE}")
 
     if not CREDENTIALS_FILE.exists():
